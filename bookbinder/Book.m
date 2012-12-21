@@ -1,29 +1,32 @@
 #import "Book.h"
+#import "Page.h"
 
 
-@implementation Book
+@implementation Book {
+  UIPageViewController *pageViewController;
+  NSArray *pages;
+  int pageIndex;
+  int pageCount;
+  int loadedCount;
+}
 
 
 - (id)init {
   if (self = [super init]) {
-    cutter = [[Cutter alloc] init];
-
-    NSMutableArray *mPages = [NSMutableArray array];
-    Page *page;
-    int i = PAGES_COUNT;
-    while (i--) {
-      page = [[Page alloc] init];
-      [mPages addObject:page];
-    }
-    pages = [NSArray arrayWithArray:mPages];
-
-    pageIndex = 0;
-    pageCount = 10;
-
     pageViewController = [[UIPageViewController alloc]
       initWithTransitionStyle:UIPageViewControllerTransitionStylePageCurl
         navigationOrientation:UIPageViewControllerNavigationOrientationHorizontal
                       options:nil];
+
+    NSMutableArray *tmpPages = [NSMutableArray array];
+    int i = PAGES_COUNT;
+    Page *page;
+    while (i--) {
+      page = [[Page alloc] init];
+      page.delegate = self;
+      [tmpPages addObject:page];
+    }
+    pages = tmpPages;
   }
   return self;
 }
@@ -33,39 +36,26 @@
 
   self.view.backgroundColor = [UIColor redColor];
 
-  [self addChildViewController:cutter];
-  [self.view addSubview:cutter.view];
-
   pageViewController.view.backgroundColor = [UIColor yellowColor];
   pageViewController.delegate = self;
   pageViewController.dataSource = self;
   pageViewController.view.frame = self.view.bounds;
   [self addChildViewController:pageViewController];
-//  [self.view addSubview:pageViewController.view];
-  [pageViewController setViewControllers:[NSArray arrayWithObject:[self getPageAt:pageIndex]]
-                               direction:UIPageViewControllerNavigationDirectionForward
-                                animated:NO completion:NULL];
+  [self.view addSubview:pageViewController.view];
 
-  [self willRotateToInterfaceOrientation:self.interfaceOrientation
-                                duration:0.4];
-}
-
-- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation
-                                duration:(NSTimeInterval)duration {
-  [self load:@"rashomon"];
-}
-
-- (void)load:(NSString *)filename {
-  // サイズ計測用 UIWebView にファイルをロードする
-  [cutter loadFile:filename];
-
-  // ページにファイルをロードする
+  int i = PAGES_COUNT;
   Page *page;
-  for (NSUInteger i = 0; i < PAGES_COUNT; i++) {
+  while (i--) {
     page = [pages objectAtIndex:i];
-    [page loadFile:filename];
+    [self.view addSubview:page.view];
   }
+
+  [self loadFile:@"rashomon"];
 }
+
+//- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation
+//                                duration:(NSTimeInterval)duration {
+//}
 
 - (Page *)getRelativePageAt:(int)deltaIndex {
   int index = pageIndex + deltaIndex;
@@ -87,22 +77,55 @@
   return page;
 }
 
+- (void)loadFile:(NSString *)filename {
+  loadedCount = 0;
+  int i = PAGES_COUNT;
+  Page *page;
+  while (i--) {
+    page = [pages objectAtIndex:i];
+    [page loadFile:filename];
+  }
+}
+
 
 /*******************************************************************************
- * UIPageViewController delegation
+ * PageDelegate
  ******************************************************************************/
 
-- (UIViewController *)pageViewController:(UIPageViewController *)this
+- (void)pageDidFinishLoad:(Page *)page {
+  if (++loadedCount == PAGES_COUNT) {
+    int i = PAGES_COUNT;
+    Page *page;
+    while (i--) {
+      page = [pages objectAtIndex:i];
+      [page.view removeFromSuperview];
+    }
+
+    pageIndex = 0;
+    pageCount = [page count];
+
+    [pageViewController setViewControllers:[NSArray arrayWithObject:[self getPageAt:pageIndex]]
+                                 direction:UIPageViewControllerNavigationDirectionForward
+                                  animated:NO completion:NULL];
+  }
+}
+
+
+/*******************************************************************************
+ * PageDelegate
+ ******************************************************************************/
+
+- (UIViewController *)pageViewController:(UIPageViewController *)pageViewController
       viewControllerBeforeViewController:(UIViewController *)page {
   return [self getRelativePageAt:-1];
 }
 
-- (UIViewController *)pageViewController:(UIPageViewController *)this
+- (UIViewController *)pageViewController:(UIPageViewController *)pageViewController
        viewControllerAfterViewController:(UIViewController *)page {
   return [self getRelativePageAt:1];
 }
 
-- (void)pageViewController:(UIPageViewController *)this
+- (void)pageViewController:(UIPageViewController *)pageViewController
         didFinishAnimating:(BOOL)finished
    previousViewControllers:(NSArray *)previousViewControllers
        transitionCompleted:(BOOL)completed {
