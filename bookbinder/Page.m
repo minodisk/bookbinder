@@ -27,7 +27,7 @@
 
   webView.delegate = self;
   webView.scalesPageToFit = YES;
-  webView.scrollView.scrollEnabled = NO;
+//  webView.scrollView.scrollEnabled = NO;
   webView.backgroundColor = [UIColor clearColor];
   webView.opaque = NO;
   [webView setFrame:CGRectMake(paddingLeft, paddingTop, self.view.bounds.size.width - (paddingLeft + paddingRight), self.view.bounds.size.height - (paddingTop + paddingBottom))];
